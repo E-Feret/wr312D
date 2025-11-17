@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mon Point & Click Aventure (Scène 1)</title>
+    <meta charset="utf-8">
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css">
+    
+    <style>
+        body {
+            cursor: url('assets/cursor_default.png'), auto;
+            background-color: #1a1a1a;
+            font-family: sans-serif;
+            color: white;
+            text-align: center;
+            /* Empêche le débordement horizontal à cause des animations */
+            overflow-x: hidden; 
+        }
+
+        #scene {
+            width: 1024px; 
+            height: 576px;
+            margin: auto;
+            background-image: url('assets/room0_background.png');
+            position: relative; 
+            overflow: hidden; 
+            border: 2px solid #444;
+            background-size: 100% 100%; 
+        }
+        
+        #rideau {
+            position: absolute;
+            top: 40px;
+            left: 250px;
+            width: 500px;
+            height: 500px;
+            z-index: 10;
+        }
+        
+        #escalier {
+            position: absolute;
+            top: 220px;
+            right: 125px;
+            width: 230px;
+            z-index: 5;
+        }
+        
+        #caisses {
+            position: absolute;
+            bottom: -5px;
+            left: 20px;
+            width: 400px;
+            z-index: 8;
+            cursor: url('assets/cursor_pick_hover.png'), auto;
+        }
+        
+        #blason-objet {
+            position: absolute;
+            bottom: 90px;
+            left: 425px;
+            width: 85px;
+            z-index: 9;
+            cursor: url('assets/cursor_info.png'), auto;
+        }
+
+        #personnage {
+            position: absolute;
+            bottom: 30px; 
+            left: 470px;  
+            width: 140px; 
+            z-index: 9;
+        }
+
+        #sac-icone {
+            position: absolute;
+            top: 15px;   
+            left: 20px;   
+            width: 80px; 
+            cursor: url('assets/cursor_pick_hover.png'), auto;
+            z-index: 100;
+        }
+
+        #inventaire-ui {
+            position: absolute;
+            top: 15px; 
+            left: 105px;
+            width: 304px; 
+            height: 87px; 
+            background-image: url('assets/Inventory.png');
+            background-size: contain; 
+            background-repeat: no-repeat;
+            z-index: 90;
+            display: none; 
+        }
+        
+        .inventaire-slot {
+            position: absolute;
+            top: 14px;    
+            width: 64px;  
+            height: 64px; 
+        }
+        
+        #slot1 { left: 14px; }
+        #slot2 { left: 88px; }
+        #slot3 { left: 162px; }
+        #slot4 { left: 236px; }
+        
+        
+        .item-dans-inventaire {
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            cursor: url('assets/cursor_use.png'), auto;
+        }
+        
+        #cle-objet {
+            position: absolute;
+            bottom: 30px; 
+            left: 370px;  
+            width: 70px;  
+            cursor: url('assets/cursor_pick_hover.png'), auto;
+            z-index: 11; 
+            display: none; 
+        }
+
+        /* --- STYLES DE NOTIFICATION --- */
+
+        #notification-container {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column-reverse; /* Les nouvelles notifs poussent les anciennes vers le haut */
+        }
+
+        .notification-message {
+            background-color: #2a231f; /* Brun très sombre */
+            color: #f0e6d2; /* Couleur parchemin */
+            border: 2px solid #5a4a3a; /* Bordure bois/cuir */
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-family: 'Times New Roman', Times, serif; /* Police médiévale */
+            font-size: 1.1em;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+            margin-top: 10px;
+            
+            /* État initial pour l'animation */
+            opacity: 0;
+            transform: translateX(-100%);
+            
+            /* Applique l'animation */
+            animation: notification-animation 3s ease-out forwards;
+        }
+
+        @keyframes notification-animation {
+            /* 0% -> 15% (Entrée) */
+            0% {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            15% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            
+            /* 15% -> 80% (Glissement lent) */
+            80% {
+                opacity: 1;
+                transform: translateX(-20px); /* Glisse lentement vers la gauche */
+            }
+
+            /* 80% -> 100% (Sortie) */
+            100% {
+                opacity: 0;
+                transform: translateX(-500px); /* Accélère pour sortir */
+            }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <h2>Mon Aventure Point & Click</h2>
+    <p>Cliquez sur les caisses (à gauche) pour trouver un objet.</p>
+
+    <div id="scene">
+        
+        <img src="assets/room0_curtain.png" id="rideau" alt="Rideau">
+        
+        <img src="assets/room0_staircase.png" id="escalier" alt="Escalier">
+        <img src="assets/room0_stuff.png" id="caisses" alt="Caisses et tonneaux">
+        <img src="assets/WolfCrest.png" id="blason-objet" alt="Blason">
+        
+        <img src="assets/player_info_0.png" id="personnage" alt="Personnage">
+
+        <img src="assets/BackPackClosed.png" id="sac-icone" alt="Inventaire">
+        
+        <div id="inventaire-ui">
+            <div class="inventaire-slot" id="slot1"></div>
+            <div class="inventaire-slot" id="slot2"></div>
+            <div class="inventaire-slot" id="slot3"></div>
+            <div class="inventaire-slot" id="slot4"></div>
+        </div>
+
+        <img src="assets/OldStorageKey.png" id="cle-objet" alt="Vieille clé">
+
+    </div>
+
+    <div id="notification-container"></div>
+
+
+    <script>
+    
+    // --- Fonction de Notification ---
+    // Affiche une notification temporaire
+    function afficherNotification(message) {
+        // Crée l'élément de notification
+        const notif = $('<div></div>')
+            .addClass('notification-message')
+            .text(message);
+        
+        // Ajoute la notification au conteneur
+        $('#notification-container').append(notif);
+        
+        // Supprime la notification du DOM après la fin de l'animation (3000ms = 3s)
+        setTimeout(() => {
+            notif.remove();
+        }, 3000);
+    }
+
+
+    $(function() {
+        
+        let inventaireOuvert = false;
+        
+        const playerAnimationImages = [
+            'assets/player_info_0.png',
+            'assets/player_info_1.png',
+            'assets/player_info_2.png'
+        ];
+        const animationDelay = 150; 
+
+        playerAnimationImages.forEach(imgUrl => {
+            new Image().src = imgUrl;
+        });
+
+        $("#sac-icone").click(function() {
+            $("#inventaire-ui").toggle(); 
+            inventaireOuvert = !inventaireOuvert;
+            
+            if (inventaireOuvert) {
+                $(this).attr('src', 'assets/BackPackOpen.png');
+                $("#personnage").attr('src', playerAnimationImages[0]);
+                setTimeout(() => {
+                    $("#personnage").attr('src', playerAnimationImages[1]);
+                }, animationDelay);
+                setTimeout(() => {
+                    $("#personnage").attr('src', playerAnimationImages[2]);
+                }, animationDelay * 2);
+
+            } else {
+                $(this).attr('src', 'assets/BackPackClosed.png');
+                $("#personnage").attr('src', playerAnimationImages[2]);
+                setTimeout(() => {
+                    $("#personnage").attr('src', playerAnimationImages[1]);
+                }, animationDelay);
+                setTimeout(() => {
+                    $("#personnage").attr('src', playerAnimationImages[0]);
+                }, animationDelay * 2);
+            }
+        });
+
+        $("#caisses").one("click", function() {
+            $("#cle-objet").show("fast"); 
+            // Remplacé :
+            afficherNotification("Vous avez trouvé une clé !");
+        });
+        
+        $("#blason-objet").click(function() {
+            // Remplacé :
+            afficherNotification("Un blason étrange... Il semble ne servir à rien pour le moment.");
+        });
+
+        $("#cle-objet").click(function() {
+            let premierSlotLibre = $(".inventaire-slot:empty").first();
+            
+            if (premierSlotLibre.length > 0) {
+                let cle = $(this); 
+                
+                premierSlotLibre.append(cle);
+                
+                cle.addClass('item-dans-inventaire');
+                cle.draggable("disable"); 
+                cle.off('click'); 
+                
+                // Remplacé :
+                afficherNotification("Clé ajoutée à l'inventaire !");
+            } else {
+                // Remplacé :
+                afficherNotification("Votre inventaire est plein !");
+            }
+        });
+
+        $("#cle-objet").draggable({ 
+            cursor: "url('assets/cursor_pick_click.png'), auto", 
+            revert: "invalid"
+        });
+
+        $(".inventaire-slot").droppable({
+            accept: "#cle-objet", 
+            drop: function(event, ui) {
+                let objetDepose = ui.draggable;
+                $(this).append(objetDepose); 
+                objetDepose.addClass('item-dans-inventaire');
+                objetDepose.draggable("disable");
+                objetDepose.off('click'); 
+                
+                // Remplacé :
+                afficherNotification("Clé ajoutée à l'inventaire !");
+            }
+        });
+
+    });
+    </script>
+
+</body>
+</html>
